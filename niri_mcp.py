@@ -1,11 +1,25 @@
+import glob
 import json
+import os
 import subprocess
 from typing import Optional
 
-from mcp.server.fastmcp import FastMCP
+# Some terminals and agents hand their children a curated environment without
+# NIRI_SOCKET (and the socket's name carries the compositor's PID), so discover
+# it when it is missing, the way niri-display-monitor.py does. Every niri call
+# below inherits os.environ, so setting it here is enough.
+if not os.environ.get("NIRI_SOCKET"):
+    _runtime_dir = os.environ.get("XDG_RUNTIME_DIR") or f"/run/user/{os.getuid()}"
+    _sockets = sorted(glob.glob(os.path.join(_runtime_dir, "niri.*.sock")))
+    if _sockets:
+        os.environ["NIRI_SOCKET"] = _sockets[0]
 
-# Create the MCP server
-mcp = FastMCP("NiriMCP")
+try:
+    from mcp.server.mcpserver import MCPServer
+    mcp = MCPServer("NiriMCP")
+except ImportError:
+    from mcp.server.fastmcp import FastMCP
+    mcp = FastMCP("NiriMCP")
 
 
 @mcp.tool()
